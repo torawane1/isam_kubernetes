@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isamwrprp2
+  labels:
+    app: isamwrprp2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isamwrprp2
+  template:
+    metadata:
+      labels:
+        app: isamwrprp2
+    spec:
+      volumes:
+        - name: isamconfig
+          emptyDir: {}
+        - name: isamwrprp2-logs
+          emptyDir: {}
+      containers:
+        - name: isamwrprp2
+          image: store/ibmcorp/isam:9.0.7.1_IF2
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - mountPath: /var/shared
+              name: isamconfig
+            - mountPath: /var/application.logs
+              name: isamwrprp2-logs
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+                - SYS_RESOURCE
+          env:
+            - name: SERVICE
+              value: webseal
+            - name: INSTANCE
+              value: rp2
+            - name: CONTAINER_TIMEZONE
+              value: Asia/Kolkata
+            - name: AUTO_RELOAD_FREQUENCY
+              value: "5"
+            - name: CONFIG_SERVICE_URL
+              value: https://isamconfig:9443/shared_volume
+            - name: CONFIG_SERVICE_USER_NAME
+              value: cfgsvc
+            - name: CONFIG_SERVICE_USER_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: configreader
+                  key: cfgsvcpw
+          livenessProbe:
+            exec:
+                command:
+                - /sbin/health_check.sh 
+                - livenessProbe
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            exec:
+                command:
+                - /sbin/health_check.sh
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: dockerlogin
+---
+# for external service access, see https://console.bluemix.net/docs/containers/cs_apps.html#cs_apps_public_nodeport
+

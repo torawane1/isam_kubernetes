@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isamconfig
+  labels:
+    app: isamconfig
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isamconfig
+  template:
+    metadata:
+      labels:
+        app: isamconfig
+    spec:
+      volumes:
+        - name: isamconfig
+          persistentVolumeClaim:
+            claimName: isamconfig
+        - name: isamconfig-logs
+          emptyDir: {}
+      containers:
+        - name: isamconfig
+          image: store/ibmcorp/isam:9.0.7.1_IF2
+          volumeMounts:
+            - mountPath: /var/shared
+              name: isamconfig
+            - mountPath: /var/application.logs
+              name: isamconfig-logs
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+                - SYS_RESOURCE
+          env:
+            - name: SERVICE
+              value: config
+            - name: CONTAINER_TIMEZONE
+              value: Asia/Kolkata
+            - name: ADMIN_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: samadmin
+                  key: adminpw
+#          command: [ "/sbin/bootstrap.sh" ]
+      imagePullSecrets:
+        - name: dockerlogin
+---
+# for external service access, see https://console.bluemix.net/docs/containers/cs_apps.html#cs_apps_public_nodeport
+apiVersion: v1
+kind: Service
+metadata:
+  name: isamconfig
+spec:
+# To make the LMI externally visible, make it a nodePort
+  type: NodePort
+  ports:
+    - port: 9443
+      name: isamconfig
+      protocol: TCP
+# make this one statically allocated
+      nodePort: 30442
+  selector:
+    app: isamconfig

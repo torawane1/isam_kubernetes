@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isamdsc
+  labels:
+    app: isamdsc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isamdsc
+  template:
+    metadata:
+      labels:
+        app: isamdsc
+    spec:
+      volumes:
+        - name: isamconfig
+          emptyDir: {}
+        - name: isamdsc-logs
+          emptyDir: {}
+      containers:
+        - name: isamdsc
+          image: store/ibmcorp/isam:9.0.7.1_IF2
+          ports:
+            - containerPort: 443
+            - containerPort: 444
+          volumeMounts:
+            - mountPath: /var/shared
+              name: isamconfig
+            - mountPath: /var/application.logs
+              name: isamdsc-logs
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+                - SYS_RESOURCE
+          env:
+            - name: SERVICE
+              value: dsc
+            - name: INSTANCE
+              value: '1'
+            - name: CONTAINER_TIMEZONE
+              value: Asia/Kolkata
+            - name: AUTO_RELOAD_FREQUENCY
+              value: "5"
+            - name: CONFIG_SERVICE_URL
+              value: https://isamconfig:9443/shared_volume
+            - name: CONFIG_SERVICE_USER_NAME
+              value: cfgsvc
+            - name: CONFIG_SERVICE_USER_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: configreader
+                  key: cfgsvcpw
+      imagePullSecrets:
+        - name: dockerlogin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: isamdsc
+spec:
+  type: NodePort
+  ports:
+    - port: 443
+      name: isamdsc-svc
+      protocol: TCP
+      nodePort: 30444
+    - port: 444
+      name: isamdsc-rep
+      protocol: TCP
+  selector:
+    app: isamdsc
+

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: isamconfig
+spec:
+  capacity:
+    storage: 250M
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /Shared_907
+    server: 9.199.144.202
+    readOnly: false

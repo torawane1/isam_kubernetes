@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isamwrprp1
+  labels:
+    app: isamwrprp1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isamwrprp1
+  template:
+    metadata:
+      labels:
+        app: isamwrprp1
+    spec:
+      volumes:
+        - name: isamconfig
+          emptyDir: {}
+        - name: isamwrprp1-logs
+          emptyDir: {}
+      containers:
+        - name: isamwrprp1
+          image: store/ibmcorp/isam:9.0.7.1_IF2
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - mountPath: /var/shared
+              name: isamconfig
+            - mountPath: /var/application.logs
+              name: isamwrprp1-logs
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE
+                - SYS_RESOURCE
+          env:
+            - name: SERVICE
+              value: webseal
+            - name: INSTANCE
+              value: rp1
+            - name: CONTAINER_TIMEZONE
+              value: Asia/Kolkata
+            - name: AUTO_RELOAD_FREQUENCY
+              value: "5"
+            - name: CONFIG_SERVICE_URL
+              value: https://isamconfig:9443/shared_volume
+            - name: CONFIG_SERVICE_USER_NAME
+              value: cfgsvc
+            - name: CONFIG_SERVICE_USER_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: configreader
+                  key: cfgsvcpw
+      imagePullSecrets:
+        - name: dockerlogin
+---
+# for external service access, see https://console.bluemix.net/docs/containers/cs_apps.html#cs_apps_public_nodeport
+apiVersion: v1
+kind: Service
+metadata:
+  name: isamwrprp1
+spec:
+  type: NodePort
+  sessionAffinity: ClientIP
+  ports:
+    - port: 443
+      name: isamwrprp1
+      protocol: TCP
+      nodePort: 30443
+  selector:
+    app: isamwrprp1
+
